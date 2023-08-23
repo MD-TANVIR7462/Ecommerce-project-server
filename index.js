@@ -28,6 +28,7 @@ async function run() {
     await client.connect();
     const database = client.db("SwiftMartDB");
     const SwiftProductCollection  = database.collection("SwiftProduct");
+    const SwiftUserCollection = database.collection("SwiftUser");
 
 app.get("/",async(req,res)=>{
    const Data = await SwiftProductCollection.find().toArray()
@@ -35,11 +36,36 @@ app.get("/",async(req,res)=>{
 
 })
 
-app.get("/product/:id",async(req,res)=>{
+app.get("/details/:id",async(req,res)=>{
    const id = req.params.id
    const query = {_id : new ObjectId(id)}
    const result = await SwiftProductCollection.findOne(query)
    res.send(result)
+
+})
+app.get("/more/:subcetegory",async(req,res)=>{
+  const subCetergory = req.params.subcetegory
+  // console.log(subCetergory)
+  const query = {subcategory : subCetergory}
+  const result = await SwiftProductCollection.find(query).toArray()
+  res.send(result)
+})
+
+
+//users Collections ====>>>
+app.post("/allusers",async(req,res)=>{
+  const user = req.body
+  const result = await SwiftUserCollection.insertOne(user)
+  res.send(result)
+
+
+})
+//Post addproducts
+app.post("/addproducts",async(req,res)=>{
+const product = req.body
+// console.log(product);
+const result = await SwiftProductCollection.insertOne(product)
+res.send(result);
 
 })
 
