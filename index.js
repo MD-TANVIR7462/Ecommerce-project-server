@@ -63,10 +63,17 @@ app.post("/allusers",async(req,res)=>{
 //Post addproducts
 app.post("/addproducts",async(req,res)=>{
 const product = req.body
-// console.log(product);
 const result = await SwiftProductCollection.insertOne(product)
 res.send(result);
 
+})
+
+app.get("/myproducts",async(req,res)=>{
+  const email = req.query.email
+ 
+  const query = {email:email}
+  const result = await SwiftProductCollection.find(query).toArray()
+  res.send(result)
 })
 
 
