@@ -53,22 +53,32 @@ async function run() {
     app.post("/bookmarks", async (req, res) => {
       const bookmarkProduct = req.body;
       const email = req.query.email;
-      const query = {oldID : bookmarkProduct.oldID}&&{email:email}
-      const existingBookmark = await bookmarkcollection.findOne(query)
-      if(existingBookmark) {
-        return res.send({"message": "Already Bookmarked",})
+      const query = { oldID: bookmarkProduct.oldID, email: email };
+
+      const existingBookmark = await bookmarkcollection.findOne(query);
+      if (existingBookmark) {
+        return res.send({ message: "Already Bookmarked" });
+      } else {
+        const result = await bookmarkcollection.insertOne(bookmarkProduct);
+        res.send(result);
       }
-     else{
-      const result = await bookmarkcollection.insertOne(bookmarkProduct);
+    });
+    app.delete("/bookmarkDelete/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookmarkcollection.deleteOne(query);
       res.send(result);
-     }
+    });
+    //users all booksmarked products getting
+    app.get("/bookmarksAllProducts", async (req, res) => {
+      const bookmarkProduct = await bookmarkcollection.find().toArray();
+      res.send(bookmarkProduct);
     });
 
-    //all users Collections ====>>>
+    // creat a user on all users Collections ====>>>
     app.post("/allusers", async (req, res) => {
       const user = req.body;
       const email = user.email;
-      console.log(email);
       const query = { email: email };
       const existingUser = await SwiftUserCollection.findOne(query);
       if (existingUser) {
@@ -78,6 +88,20 @@ async function run() {
         res.send(result);
       }
     });
+
+    app.get("/user", async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { email: email };
+        const user = await SwiftUserCollection.findOne(query);
+        if (user) {
+          res.status(200).json(user);
+        }
+      } catch (error) {
+        res.status(500).json({ message: "a error or line 102 ", error });
+      }
+    });
+
     //admin added products
     app.post("/addproducts", async (req, res) => {
       const product = req.body;
