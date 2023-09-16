@@ -1,7 +1,12 @@
 const express = require("express");
 const app = express();
+const Stripe = require("stripe")(
+  "sk_test_51NFEe1G70XKke0f2ZP03EP27C2z8AzNgEWNi2jpvfjRGsZAVPKcjEwxDIFV7eFTWyllZsrufzjC3ohSSiVUZg1Wg00t7daa2mu"
+);
+
 const cors = require("cors");
 const port = process.env.PORT || 5000;
+
 require("dotenv").config();
 // middleware
 app.use(cors());
@@ -20,7 +25,7 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-
+console.log(process.env.payment_Key);
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -29,6 +34,7 @@ async function run() {
     const SwiftProductCollection = database.collection("SwiftProduct");
     const SwiftUserCollection = database.collection("SwiftUser");
     const bookmarkcollection = database.collection("BookmarkProduct");
+    const SwiftpaymentCollection = database.collection("Swiftpayment");
 
     app.get("/", async (req, res) => {
       const Data = await SwiftProductCollection.find().toArray();
@@ -75,6 +81,25 @@ async function run() {
       res.send(bookmarkProduct);
     });
 
+    app.get("/bookmarks", async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { email: email };
+        const bookmarkProducts = await bookmarkcollection.find(query).toArray();
+
+        if (bookmarkProducts.length > 0) {
+          return res.status(200).json(bookmarkProducts);
+        } else {
+          res.status(200).json({ message: "No bookmark products found" });
+        }
+      } catch (err) {
+        res.status(500).json({
+          message: "There was an error when getting bookmark products",
+          err,
+        });
+      }
+    });
+
     // creat a user on all users Collections ====>>>
     app.post("/allusers", async (req, res) => {
       const user = req.body;
@@ -89,6 +114,15 @@ async function run() {
       }
     });
 
+    //get all users
+    app.get("/allUsers", async (req, res) => {
+      try {
+        const user = await SwiftUserCollection.find().toArray();
+        res.status(200).json(user);
+      } catch (error) {}
+    });
+
+    // get a single user by email
     app.get("/user", async (req, res) => {
       try {
         const email = req.query.email;
@@ -104,15 +138,37 @@ async function run() {
 
     //admin added products
     app.post("/addproducts", async (req, res) => {
-      const product = req.body;
-      const id = product.oldID;
-      const existing = { oldID: id };
-      if (existing) {
-        res.send({ "status: ": "Already Added Into Cart" });
-      } else {
+      try {
+        const product = req.body;
         const result = await SwiftProductCollection.insertOne(product);
-        res.send(result);
+        res.status(200).json(result);
+      } catch (error) {
+        res.status(500).json(error);
       }
+    });
+
+    //manage users
+    app.patch(`/admin/:id`, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await SwiftUserCollection.updateOne(query, updateDoc);
+      res.status(200).json(result);
+    });
+    app.patch(`/user/:id`, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "user",
+        },
+      };
+      const result = await SwiftUserCollection.updateOne(query, updateDoc);
+      res.status(200).json(result);
     });
 
     //admin gets his product
@@ -145,6 +201,58 @@ async function run() {
       const result = await SwiftProductCollection.deleteOne(product);
       res.send(result);
     });
+    
+// --------all payment and gatway here------->
+    //creat payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const price = req.body.price;
+      const amount = price * 100;
+      console.log(price, amount);
+      try {
+        const paymentIntent = await Stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "error", error });
+      }
+    });
+    //get Single product for payment method
+    app.get("/paymentBookmark/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookmarkcollection.findOne(query);
+      res.send(result);
+    });
+
+    // Complete Payment and do some change
+    app.post("/paymentcomplete", async (req, res) => {
+      const newpayment = req.body;
+      const id = req.body.oldID;
+      const filter = { _id: new ObjectId(id) };
+      const deleteID = newpayment.BookMarkedId;
+      const confirmDelet = { _id: new ObjectId(deleteID) };
+      const updateDoc = {
+        $set: {
+          Quantity: newpayment.AvailableProducts,
+        },
+      };
+      const removeBookmark = await bookmarkcollection.deleteOne(confirmDelet);
+      const query = await SwiftProductCollection.updateOne(filter, updateDoc);
+      const result = await SwiftpaymentCollection.insertOne(newpayment);
+      res.send({ result, query, removeBookmark });
+    });
+
+
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
