@@ -25,7 +25,7 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
-console.log(process.env.payment_Key);
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -97,6 +97,20 @@ async function run() {
           message: "There was an error when getting bookmark products",
           err,
         });
+      }
+    });
+
+    //User Tranjection Information------>
+    app.get("/tranjection", async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { email: email };
+        const tranjectionComplete = await SwiftpaymentCollection.find(
+          query
+        ).toArray();
+        res.status(200).json(tranjectionComplete);
+      } catch (error) {
+        res.status(500).json({ message: "Error on getting payment's", error });
       }
     });
 
@@ -201,8 +215,8 @@ async function run() {
       const result = await SwiftProductCollection.deleteOne(product);
       res.send(result);
     });
-    
-// --------all payment and gatway here------->
+
+    // --------all payment and gatway here------->
     //creat payment intent
     app.post("/create-payment-intent", async (req, res) => {
       const price = req.body.price;
@@ -248,11 +262,6 @@ async function run() {
       const result = await SwiftpaymentCollection.insertOne(newpayment);
       res.send({ result, query, removeBookmark });
     });
-
-
-
-
-
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
