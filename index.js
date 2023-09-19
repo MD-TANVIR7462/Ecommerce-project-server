@@ -37,6 +37,9 @@ async function run() {
     const SwiftpaymentCollection = database.collection("Swiftpayment");
 
     app.get("/", async (req, res) => {
+      res.send("Welcome to the Swift");
+    });
+    app.get("/allProducts", async (req, res) => {
       const Data = await SwiftProductCollection.find().toArray();
       res.send(Data);
     });
@@ -221,7 +224,7 @@ async function run() {
     app.post("/create-payment-intent", async (req, res) => {
       const price = req.body.price;
       const amount = price * 100;
-  
+
       try {
         const paymentIntent = await Stripe.paymentIntents.create({
           amount: amount,
