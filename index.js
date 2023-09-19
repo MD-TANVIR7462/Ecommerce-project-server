@@ -39,8 +39,14 @@ async function run() {
       res.send("Welcome to the Swift");
     });
     app.get("/allProducts", async (req, res) => {
-      const Data = await SwiftProductCollection.find().toArray();
-      res.send(Data);
+      try{
+        const Data = await SwiftProductCollection.find().toArray();
+        res.send(Data);
+      }
+      catch(err){
+        res.status(500).json({message: err.message});
+      }
+     
     });
 
     app.get("/details/:id", async (req, res) => {
